@@ -22,7 +22,7 @@ local function get_file_icon(path, extension)
 	if not has_devicons then
 		return " ", nil
 	end
-	
+
 	local icon, hl_group = devicons.get_icon(vim.fn.fnamemodify(path, ":t"), extension, { default = true })
 	return icon or " ", hl_group
 end
@@ -32,12 +32,12 @@ local function make_display(entry)
 	local displayer = require("telescope.pickers.entry_display").create({
 		separator = " ",
 		items = {
-			{ width = 2 },   -- file icon
-			{ width = 1 },   -- bookmark icon  
+			{ width = 2 }, -- file icon
+			{ width = 1 }, -- bookmark icon
 			{ remaining = true }, -- bookmark name and path
 		},
 	})
-	
+
 	return displayer({
 		{ entry.file_icon, entry.icon_hl_group },
 		{ entry.bookmark_icon, "TelescopeResultsComment" },
@@ -76,7 +76,7 @@ function M.open_bookmark_picker(show_all)
 	for _, bookmark in ipairs(bookmarks) do
 		local file_icon, icon_hl_group = get_file_icon(bookmark.path, vim.fn.fnamemodify(bookmark.path, ":e"))
 		local bookmark_icon = bookmark.line_num and " " or " " -- Different icons for line vs file bookmarks
-		
+
 		local text
 		if show_all then
 			-- Show project name for global view
@@ -130,7 +130,7 @@ function M.open_bookmark_picker(show_all)
 						display = make_display,
 						path = entry.path,
 						ordinal = entry.name .. " " .. entry.path,
-						lnum = entry.line_num,  -- LSP-compatible line number
+						lnum = entry.line_num, -- LSP-compatible line number
 						file_icon = entry.file_icon,
 						bookmark_icon = entry.bookmark_icon,
 						icon_hl_group = entry.icon_hl_group,
@@ -138,8 +138,52 @@ function M.open_bookmark_picker(show_all)
 					}
 				end,
 			}),
-			sorter = conf.file_sorter(opts),  -- Use file sorter for better file handling
-			previewer = conf.file_previewer(opts),
+			sorter = conf.file_sorter(opts), -- Use file sorter for better file handling
+			previewer = previewers.new_buffer_previewer({
+				title = "Bookmark Preview",
+				get_buffer_by_name = function(_, entry)
+					return entry.path
+				end,
+				define_preview = function(self, entry, status)
+					local file_path = entry.path
+					local line_num = entry.lnum or 1
+
+					-- Use telescope's built-in file preview
+					conf.buffer_previewer_maker(file_path, self.state.bufnr, {
+						bufname = self.state.bufname,
+						winid = self.state.winid,
+						callback = function(bufnr)
+							-- Schedule the centering and highlighting after buffer is loaded
+							vim.schedule(function()
+								if line_num and line_num > 0 and vim.api.nvim_win_is_valid(self.state.winid) then
+									-- Set cursor to the bookmarked line
+									pcall(vim.api.nvim_win_set_cursor, self.state.winid, { line_num, 0 })
+
+									-- Center the line in the preview window
+									vim.api.nvim_win_call(self.state.winid, function()
+										-- Use multiple centering commands for better effect
+										vim.cmd("normal! zz")
+										vim.cmd("redraw")
+									end)
+
+									-- Add highlighting to the bookmarked line
+									local ns_id = vim.api.nvim_create_namespace("booky_telescope_highlight")
+									vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+									pcall(
+										vim.api.nvim_buf_add_highlight,
+										bufnr,
+										ns_id,
+										"CursorLine",
+										line_num - 1,
+										0,
+										-1
+									)
+								end
+							end)
+						end,
+					})
+				end,
+			}),
 			attach_mappings = function(prompt_bufnr, map)
 				actions.select_default:replace(function()
 					local selection = action_state.get_selected_entry()

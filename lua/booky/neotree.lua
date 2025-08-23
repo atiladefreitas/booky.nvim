@@ -1,5 +1,9 @@
 local M = {}
 
+-- Cache for decorated buffers and their state
+local decoration_cache = {}
+local debounce_timers = {}
+
 -- Setup function to register with NeoTree
 function M.setup()
 	local has_neotree = pcall(require, "neo-tree")
@@ -53,14 +57,58 @@ end
 -- Manual decoration approach using autocmds
 function M.setup_manual_decorations()
 	-- Hook into NeoTree events if available
-	vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost" }, {
+	vim.api.nvim_create_autocmd({
+		"BufEnter",
+		"BufWritePost",
+		"CursorMoved",
+		"CursorMovedI",
+		"TextChanged",
+		"TextChangedI",
+	}, {
 		pattern = "*",
+		callback = function(args)
+			local buf_name = vim.api.nvim_buf_get_name(args.buf)
+			if buf_name:match("neo%-tree") then
+				M.debounced_decorate(args.buf)
+			end
+		end,
+	})
+
+	-- Also hook into NeoTree specific events if available
+	vim.api.nvim_create_autocmd("User", {
+		pattern = "neo-tree*",
 		callback = function()
 			vim.defer_fn(function()
 				M.decorate_neotree_buffers()
-			end, 50)
+			end, 10)
 		end,
 	})
+
+	-- Clean up cache when buffers are deleted
+	vim.api.nvim_create_autocmd("BufDelete", {
+		pattern = "*",
+		callback = function(args)
+			M.clear_cache(args.buf)
+		end,
+	})
+end
+
+-- Debounced decoration to prevent excessive calls
+function M.debounced_decorate(bufnr)
+	if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+		return
+	end
+
+	-- Clear existing timer for this buffer
+	if debounce_timers[bufnr] then
+		vim.fn.timer_stop(debounce_timers[bufnr])
+	end
+
+	-- Set new timer with debounce
+	debounce_timers[bufnr] = vim.fn.timer_start(20, function()
+		M.add_decorations_to_buffer(bufnr)
+		debounce_timers[bufnr] = nil
+	end)
 end
 
 -- Decorate all NeoTree buffers
@@ -87,8 +135,17 @@ function M.add_decorations_to_buffer(bufnr)
 	-- Create namespace for our decorations
 	local ns_id = vim.api.nvim_create_namespace("booky_bookmarks")
 
-	-- Clear existing decorations
+	-- Check if we need to update decorations (performance optimization)
+	local current_tick = vim.api.nvim_buf_get_changedtick(bufnr)
+	if decoration_cache[bufnr] and decoration_cache[bufnr].tick == current_tick then
+		return -- No changes, skip decoration update
+	end
+
+	-- Clear existing decorations only when needed
 	vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+
+	-- Initialize cache for this buffer
+	decoration_cache[bufnr] = { tick = current_tick, decorations = {} }
 
 	-- Get current working directory for relative path resolution
 	local cwd = vim.fn.getcwd()
@@ -112,41 +169,60 @@ function M.add_decorations_to_buffer(bufnr)
 					or bookmark.path:match("/" .. filename:gsub("%.", "%%.") .. "$")
 					or bookmark.name == filename
 				then
-					-- Add virtual text decoration at far right
-					vim.api.nvim_buf_set_extmark(bufnr, ns_id, i - 1, #line, {
+					-- Add virtual text decoration at far right with persistent options
+					local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ns_id, i - 1, #line, {
 						virt_text = { { config.options.neotree.icon, config.options.neotree.highlight } },
 						virt_text_pos = "right_align",
+						invalidate = false, -- Keep extmarks when buffer changes
 					})
+					-- Cache the decoration
+					decoration_cache[bufnr].decorations[i] = extmark_id
 					found_match = true
 					break
 				end
 			end
 
-			-- Fallback: try building full paths if direct match failed
+			-- Fallback: try relative path from current working directory
 			if not found_match then
-				local paths_to_try = {
-					cwd .. "/" .. filename,
-					cwd .. "/lua/atila/plugins/" .. filename,
-					vim.fn.expand("~/Dotfiles/nvim/lua/atila/plugins/" .. filename),
-				}
-
-				for _, full_path in ipairs(paths_to_try) do
-					if vim.fn.filereadable(full_path) == 1 and state.is_bookmarked(full_path) then
-						-- Add virtual text decoration at far right
-						vim.api.nvim_buf_set_extmark(bufnr, ns_id, i - 1, #line, {
-							virt_text = { { config.options.neotree.icon, config.options.neotree.highlight } },
-							virt_text_pos = "right_align",
-						})
-						break
-					end
+				local relative_path = cwd .. "/" .. filename
+				if vim.fn.filereadable(relative_path) == 1 and state.is_bookmarked(relative_path) then
+					-- Add virtual text decoration at far right with persistent options
+					local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ns_id, i - 1, #line, {
+						virt_text = { { config.options.neotree.icon, config.options.neotree.highlight } },
+						virt_text_pos = "right_align",
+						invalidate = false, -- Keep extmarks when buffer changes
+					})
+					-- Cache the decoration
+					decoration_cache[bufnr].decorations[i] = extmark_id
 				end
 			end
 		end
 	end
 end
 
+-- Clear decoration cache for a specific buffer
+function M.clear_cache(bufnr)
+	if bufnr then
+		decoration_cache[bufnr] = nil
+		if debounce_timers[bufnr] then
+			vim.fn.timer_stop(debounce_timers[bufnr])
+			debounce_timers[bufnr] = nil
+		end
+	else
+		-- Clear all cache
+		decoration_cache = {}
+		for _, timer_id in pairs(debounce_timers) do
+			vim.fn.timer_stop(timer_id)
+		end
+		debounce_timers = {}
+	end
+end
+
 -- Function to refresh NeoTree display
 function M.refresh()
+	-- Clear cache to force refresh
+	M.clear_cache()
+
 	-- Force refresh all NeoTree buffers
 	M.decorate_neotree_buffers()
 
@@ -211,26 +287,18 @@ function M.debug_decorations()
 							end
 
 							if not found_match then
-								-- Fallback: Try building paths in common directories
-								local paths_to_try = {
-									cwd .. "/" .. filename,
-									cwd .. "/lua/atila/plugins/" .. filename,
-									vim.fn.expand("~/Dotfiles/nvim/lua/atila/plugins/" .. filename),
-								}
+								-- Fallback: Try relative path from current working directory
+								local relative_path = cwd .. "/" .. filename
+								print(string.format("    -> Trying path: %s", relative_path))
+								print(
+									string.format("    -> File readable: %s", vim.fn.filereadable(relative_path) == 1)
+								)
+								print(string.format("    -> Is bookmarked: %s", state.is_bookmarked(relative_path)))
 
-								for _, full_path in ipairs(paths_to_try) do
-									print(string.format("    -> Trying path: %s", full_path))
-									print(
-										string.format("    -> File readable: %s", vim.fn.filereadable(full_path) == 1)
-									)
-									print(string.format("    -> Is bookmarked: %s", state.is_bookmarked(full_path)))
-
-									if state.is_bookmarked(full_path) then
-										print("    -> SHOULD ADD DECORATION!")
-										M.test_decoration(bufnr, i - 1, line)
-										found_match = true
-										break
-									end
+								if state.is_bookmarked(relative_path) then
+									print("    -> SHOULD ADD DECORATION!")
+									M.test_decoration(bufnr, i - 1, line)
+									found_match = true
 								end
 							end
 						end

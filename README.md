@@ -26,7 +26,7 @@ Booky is a powerful project-aware bookmark manager for Neovim. It intelligently 
 
 ```lua
 {
-    "atiladefreitas/booky",
+    "atiladefreitas/booky.nvim",
     dependencies = {
         "nvim-telescope/telescope.nvim",
         "nvim-neo-tree/neo-tree.nvim", -- optional

@@ -5,10 +5,11 @@ Booky is a powerful project-aware bookmark manager for Neovim. It intelligently 
 ## 🚀 Features
 
 - 📂 **Project-Aware Bookmarking**: Automatically detects and organizes bookmarks by project
+- 📍 **Line-Specific Bookmarks**: Bookmark specific lines within files, not just files
 - 🎯 **Project-Specific View**: Show only bookmarks from your current project
 - 🌍 **Global Bookmarks View**: Beautiful floating window showing all bookmarks grouped by project
-- 🔍 **Telescope Integration**: Browse project bookmarks using Telescope picker
-- 🌲 **NeoTree Integration**: Orange bookmark icons appear next to bookmarked files in NeoTree
+- 🔍 **Telescope Integration**: Browse project bookmarks using Telescope picker with instant line jumping
+- 🌲 **NeoTree Integration**: Visual indicators for both file and line bookmarks
 - 💾 **Persistent Storage**: Bookmarks are saved and persist across Neovim sessions
 - 🔄 **Automatic Migration**: Existing bookmarks are automatically updated with project information
 - ⚙️ **Configurable**: Customizable keybindings and appearance
@@ -51,6 +52,7 @@ Default configuration:
     -- Keymaps
     keymaps = {
         add_bookmark = "<leader>ba",      -- Add/toggle bookmark for current file
+        add_line_bookmark = "<leader>bl", -- Add current line to bookmarks
         toggle_telescope = "<leader>bb",  -- Open project bookmarks in telescope
         global_bookmarks = "<leader>bg",  -- Open global bookmarks in floating window
     },
@@ -77,6 +79,7 @@ Default configuration:
 | Key | Action |
 |-----|--------|
 | `<leader>ba` | Toggle bookmark for current file |
+| `<leader>bl` | Add current line to bookmarks |
 | `<leader>bb` | Open project bookmarks in Telescope |
 | `<leader>bg` | Open global bookmarks in floating window |
 
@@ -103,6 +106,7 @@ Default configuration:
 ## 📝 Commands
 
 - `:BookyAdd` - Add current file to bookmarks
+- `:BookyAddLine` - Add current line to bookmarks
 - `:BookyRemove` - Remove current file from bookmarks
 - `:BookyToggle` - Toggle bookmark for current file
 - `:BookyList` - Open project bookmarks in Telescope
@@ -111,8 +115,9 @@ Default configuration:
 ## 🔧 Usage
 
 ### Basic Operations
-1. **Add Bookmarks**: Press `<leader>ba` while in any file to bookmark it
-2. **Remove Bookmarks**: Press `<leader>ba` again on a bookmarked file to remove it
+1. **Add File Bookmarks**: Press `<leader>ba` while in any file to bookmark it
+2. **Add Line Bookmarks**: Press `<leader>bl` on any line to bookmark that specific line
+3. **Remove Bookmarks**: Press `<leader>ba` again on a bookmarked file to remove it (file bookmarks only)
 
 ### Viewing Bookmarks
 
@@ -120,18 +125,24 @@ Default configuration:
 - Shows only bookmarks from your current project
 - Uses Telescope interface for fuzzy searching
 - Displays relative paths from project root
+- Line bookmarks show as `filename:line_number` and jump directly to the line when selected
+- File bookmarks (📁) and line bookmarks (📍) have different visual indicators
 - Perfect for focused project work
 
 #### Global Bookmarks (`<leader>bg`)  
 - Beautiful floating window showing all bookmarks
 - Organized by project with clear visual separation
 - Current project highlighted with `▶` marker
+- File bookmarks (📁) and line bookmarks (📍) with distinct visual indicators
+- Line bookmarks jump directly to the specific line when opened
 - Interactive navigation and management
 - Press `?` for help with all available keybindings
 
 ### Visual Indicators
-- **NeoTree**: Bookmarked files show an orange bookmark icon (󰃃)
+- **NeoTree**: Bookmarked files show visual indicators
+- **Telescope**: File bookmarks show 📁 icon, line bookmarks show 📍 icon
 - **Global View**: Current project marked with `▶`, others with `▷`
+- **Line Bookmarks**: Highlighted in yellow (📍) to distinguish from file bookmarks (📁)
 
 ## 🎨 Customization
 
@@ -140,7 +151,8 @@ Default configuration:
 ```lua
 require("booky").setup({
     keymaps = {
-        add_bookmark = "<leader>bm",     -- Custom bookmark toggle key
+        add_bookmark = "<leader>bm",     -- Custom file bookmark toggle key
+        add_line_bookmark = "<leader>bL", -- Custom line bookmark key
         toggle_telescope = "<leader>bl", -- Custom project bookmarks key  
         global_bookmarks = "<leader>bG", -- Custom global bookmarks key
     },
@@ -194,7 +206,8 @@ Booky intelligently detects your project boundaries and organizes bookmarks acco
 ### Visual Project Indicators
 - Current project: `▶` (green highlight)
 - Other projects: `▷` (blue highlight)
-- Bookmark icon: `󰃃` (orange highlight)
+- File bookmarks: `📁` (orange highlight)
+- Line bookmarks: `📍` (yellow highlight)
 
 ## 📄 License
 

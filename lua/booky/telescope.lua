@@ -11,6 +11,7 @@ local conf = require("telescope.config").values
 local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
 local themes = require("telescope.themes")
+local previewers = require("telescope.previewers")
 
 -- Open bookmark picker
 function M.open_bookmark_picker()
@@ -35,7 +36,7 @@ function M.open_bookmark_picker()
     
     local opts = {}
     
-    -- Apply theme if specified
+    -- Apply theme if specified, otherwise use default telescope config
     if config.options.telescope.theme == "dropdown" then
         opts = themes.get_dropdown({})
     elseif config.options.telescope.theme == "ivy" then
@@ -43,6 +44,7 @@ function M.open_bookmark_picker()
     elseif config.options.telescope.theme == "cursor" then
         opts = themes.get_cursor({})
     end
+    -- If theme is nil, opts remains empty, inheriting user's default telescope config
     
     opts.prompt_title = config.options.telescope.prompt_title
     opts.results_title = config.options.telescope.results_title
@@ -60,6 +62,7 @@ function M.open_bookmark_picker()
             end,
         }),
         sorter = conf.generic_sorter(opts),
+        previewer = conf.file_previewer(opts),
         attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()

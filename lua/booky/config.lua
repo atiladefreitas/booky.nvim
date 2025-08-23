@@ -7,7 +7,7 @@ M.options = {
 	-- Keymaps
 	keymaps = {
 		add_bookmark = "<leader>ba", -- Add current file to bookmarks
-		toggle_telescope = "<leader>fb", -- Open telescope bookmark picker
+		toggle_telescope = "<leader>bb", -- Open telescope bookmark picker
 	},
 
 	-- NeoTree integration
@@ -20,8 +20,8 @@ M.options = {
 	-- Telescope integration
 	telescope = {
 		enabled = true,
-		theme = "dropdown", -- dropdown, ivy, cursor
-		prompt_title = "📖 Bookmarks",
+		theme = nil, -- nil (default), "dropdown", "ivy", "cursor"
+		prompt_title = " Bookmarks",
 		results_title = "Files",
 	},
 }
@@ -36,4 +36,3 @@ function M.setup(opts)
 end
 
 return M
-

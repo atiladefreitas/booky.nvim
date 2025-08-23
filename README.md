@@ -8,7 +8,7 @@ Booky is a powerful project-aware bookmark manager for Neovim. It intelligently 
 - 📍 **Line-Specific Bookmarks**: Bookmark specific lines within files, not just files
 - 🎯 **Project-Specific View**: Show only bookmarks from your current project
 - 🌍 **Global Bookmarks View**: Beautiful floating window showing all bookmarks grouped by project
-- 🔍 **Telescope Integration**: Browse project bookmarks using Telescope picker with instant line jumping
+- 🔍 **Enhanced Telescope Integration**: Browse project bookmarks with LSP support, file type icons, and instant line jumping
 - 🌲 **NeoTree Integration**: Visual indicators for both file and line bookmarks
 - 💾 **Persistent Storage**: Bookmarks are saved and persist across Neovim sessions
 - 🔄 **Automatic Migration**: Existing bookmarks are automatically updated with project information
@@ -21,6 +21,7 @@ Booky is a powerful project-aware bookmark manager for Neovim. It intelligently 
 
 - Neovim `>= 0.5.0`
 - [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) (required)
+- [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons) (optional, for file type icons in telescope)
 - [NeoTree](https://github.com/nvim-neo-tree/neo-tree.nvim) (optional, for visual indicators)
 
 ### Using Lazy.nvim
@@ -30,6 +31,7 @@ Booky is a powerful project-aware bookmark manager for Neovim. It intelligently 
     "atiladefreitas/booky.nvim",
     dependencies = {
         "nvim-telescope/telescope.nvim",
+        "nvim-tree/nvim-web-devicons", -- optional, for file type icons
         "nvim-neo-tree/neo-tree.nvim", -- optional
     },
     config = function()
@@ -123,8 +125,9 @@ Default configuration:
 
 #### Project Bookmarks (`<leader>bb`)
 - Shows only bookmarks from your current project
-- Uses Telescope interface for fuzzy searching
+- Enhanced Telescope interface with LSP support and file type icons
 - Displays relative paths from project root
+- File type icons (🗎 JS, 🗿 Lua, etc.) with proper syntax highlighting
 - Line bookmarks show as `filename:line_number` and jump directly to the line when selected
 - File bookmarks (📁) and line bookmarks (📍) have different visual indicators
 - Perfect for focused project work
@@ -140,9 +143,10 @@ Default configuration:
 
 ### Visual Indicators
 - **NeoTree**: Bookmarked files show visual indicators
-- **Telescope**: File bookmarks show 📁 icon, line bookmarks show 📍 icon
+- **Telescope**: Enhanced with file type icons (🗎 🗿 🐍 etc.), file bookmarks show 📁 icon, line bookmarks show 📍 icon
 - **Global View**: Current project marked with `▶`, others with `▷`
 - **Line Bookmarks**: Highlighted in yellow (📍) to distinguish from file bookmarks (📁)
+- **LSP Integration**: Proper syntax highlighting and file handling in telescope picker
 
 ## 🎨 Customization
 

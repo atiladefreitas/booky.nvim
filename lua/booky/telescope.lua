@@ -13,6 +13,38 @@ local action_state = require("telescope.actions.state")
 local themes = require("telescope.themes")
 local previewers = require("telescope.previewers")
 
+-- Optional dependencies for enhanced UI
+local has_devicons, devicons = pcall(require, "nvim-web-devicons")
+local has_lsp_util, lsp_util = pcall(require, "telescope.utils")
+
+-- Helper function to get file icon with highlight support
+local function get_file_icon(path, extension)
+	if not has_devicons then
+		return " ", nil
+	end
+	
+	local icon, hl_group = devicons.get_icon(vim.fn.fnamemodify(path, ":t"), extension, { default = true })
+	return icon or " ", hl_group
+end
+
+-- Helper function to create display with highlight groups
+local function make_display(entry)
+	local displayer = require("telescope.pickers.entry_display").create({
+		separator = " ",
+		items = {
+			{ width = 2 },   -- file icon
+			{ width = 1 },   -- bookmark icon  
+			{ remaining = true }, -- bookmark name and path
+		},
+	})
+	
+	return displayer({
+		{ entry.file_icon, entry.icon_hl_group },
+		{ entry.bookmark_icon, "TelescopeResultsComment" },
+		{ entry.text, "TelescopeResultsNormal" },
+	})
+end
+
 -- Open bookmark picker (project-specific by default)
 function M.open_bookmark_picker(show_all)
 	local state = require("booky.state")
@@ -42,25 +74,28 @@ function M.open_bookmark_picker(show_all)
 	-- Prepare entries for telescope
 	local entries = {}
 	for _, bookmark in ipairs(bookmarks) do
-		local display
-		local icon = bookmark.line_num and " " or " " -- Different icons for line vs file bookmarks
-
+		local file_icon, icon_hl_group = get_file_icon(bookmark.path, vim.fn.fnamemodify(bookmark.path, ":e"))
+		local bookmark_icon = bookmark.line_num and " " or " " -- Different icons for line vs file bookmarks
+		
+		local text
 		if show_all then
 			-- Show project name for global view
 			local relative_path = utils.get_relative_path(bookmark.path, bookmark.project_root)
-			display =
-				string.format("%s[%s] %s (%s)", icon, bookmark.project_name or "Unknown", bookmark.name, relative_path)
+			text = string.format("[%s] %s (%s)", bookmark.project_name or "Unknown", bookmark.name, relative_path)
 		else
 			-- Show relative path for project view
 			local relative_path = utils.get_relative_path(bookmark.path, current_project_root)
-			display = icon .. bookmark.name .. " (" .. relative_path .. ")"
+			text = bookmark.name .. " (" .. relative_path .. ")"
 		end
 
 		table.insert(entries, {
 			path = bookmark.path,
 			name = bookmark.name,
-			display = display,
 			line_num = bookmark.line_num,
+			file_icon = file_icon,
+			bookmark_icon = bookmark_icon,
+			icon_hl_group = icon_hl_group,
+			text = text,
 		})
 	end
 
@@ -92,13 +127,18 @@ function M.open_bookmark_picker(show_all)
 				entry_maker = function(entry)
 					return {
 						value = entry,
-						display = entry.display,
+						display = make_display,
 						path = entry.path,
 						ordinal = entry.name .. " " .. entry.path,
+						lnum = entry.line_num,  -- LSP-compatible line number
+						file_icon = entry.file_icon,
+						bookmark_icon = entry.bookmark_icon,
+						icon_hl_group = entry.icon_hl_group,
+						text = entry.text,
 					}
 				end,
 			}),
-			sorter = conf.generic_sorter(opts),
+			sorter = conf.file_sorter(opts),  -- Use file sorter for better file handling
 			previewer = conf.file_previewer(opts),
 			attach_mappings = function(prompt_bufnr, map)
 				actions.select_default:replace(function()

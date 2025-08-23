@@ -7,7 +7,8 @@ M.options = {
 	-- Keymaps
 	keymaps = {
 		add_bookmark = "<leader>ba", -- Add current file to bookmarks
-		toggle_telescope = "<leader>bb", -- Open telescope bookmark picker
+		toggle_telescope = "<leader>bb", -- Open telescope bookmark picker (project)
+		global_bookmarks = "<leader>bg", -- Open global bookmarks in floating window
 	},
 
 	-- NeoTree integration
@@ -21,7 +22,7 @@ M.options = {
 	telescope = {
 		enabled = true,
 		theme = nil, -- nil (default), "dropdown", "ivy", "cursor"
-		prompt_title = " Bookmarks",
+		prompt_title = "  Bookmarks ",
 		results_title = "Files",
 	},
 }

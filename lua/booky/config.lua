@@ -1,0 +1,39 @@
+local M = {}
+
+M.options = {
+	-- File to store bookmarks
+	save_path = vim.fn.stdpath("data") .. "/booky_bookmarks.json",
+
+	-- Keymaps
+	keymaps = {
+		add_bookmark = "<leader>ba", -- Add current file to bookmarks
+		toggle_telescope = "<leader>fb", -- Open telescope bookmark picker
+	},
+
+	-- NeoTree integration
+	neotree = {
+		enabled = true,
+		icon = "", -- Orange bookmark nerd font icon
+		highlight = "BookyBookmarkIcon",
+	},
+
+	-- Telescope integration
+	telescope = {
+		enabled = true,
+		theme = "dropdown", -- dropdown, ivy, cursor
+		prompt_title = "📖 Bookmarks",
+		results_title = "Files",
+	},
+}
+
+function M.setup(opts)
+	if opts then
+		M.options = vim.tbl_deep_extend("force", M.options, opts)
+	end
+
+	-- Create highlight group for bookmark icon
+	vim.api.nvim_set_hl(0, "BookyBookmarkIcon", { fg = "#FFA500", default = true })
+end
+
+return M
+

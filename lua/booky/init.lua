@@ -30,6 +30,10 @@ function M.setup(opts)
 		M.toggle_current_file()
 	end, { desc = "Toggle current file bookmark" })
 
+	vim.api.nvim_create_user_command("BookyAddLine", function()
+		M.add_line_bookmark()
+	end, { desc = "Add current line to bookmarks" })
+
 	vim.api.nvim_create_user_command("BookyList", function()
 		M.open_telescope()
 	end, { desc = "Open project bookmarks in Telescope" })
@@ -64,6 +68,10 @@ function M.setup(opts)
 	vim.keymap.set("n", config.options.keymaps.global_bookmarks, function()
 		M.open_global_bookmarks()
 	end, vim.tbl_extend("force", keymap_opts, { desc = "Open global bookmarks in floating window" }))
+
+	vim.keymap.set("n", config.options.keymaps.add_line_bookmark, function()
+		M.add_line_bookmark()
+	end, vim.tbl_extend("force", keymap_opts, { desc = "Add current line to bookmarks" }))
 end
 
 -- Add current file to bookmarks
@@ -112,6 +120,28 @@ function M.toggle_current_file()
 		M.remove_current_file()
 	else
 		M.add_current_file()
+	end
+end
+
+-- Add current line to bookmarks
+function M.add_line_bookmark()
+	local filepath = vim.api.nvim_buf_get_name(0)
+	if filepath == "" then
+		vim.notify("No file in current buffer", vim.log.levels.WARN)
+		return
+	end
+
+	local line_num = vim.api.nvim_win_get_cursor(0)[1]
+
+	if state.add_bookmark(filepath, line_num) then
+		vim.notify(
+			"Added line bookmark: " .. vim.fn.fnamemodify(filepath, ":t") .. ":" .. line_num,
+			vim.log.levels.INFO
+		)
+		-- Refresh NeoTree
+		require("booky.neotree").refresh()
+	else
+		vim.notify("Line is already bookmarked", vim.log.levels.INFO)
 	end
 end
 
@@ -193,4 +223,3 @@ function M.test_virtual_text()
 end
 
 return M
-

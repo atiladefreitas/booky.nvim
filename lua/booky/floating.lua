@@ -116,7 +116,15 @@ local function render_content()
 			-- Bookmarks for this project
 			for _, bookmark in ipairs(project.bookmarks) do
 				local relative_path = utils.get_relative_path(bookmark.path, project.root)
-				local bookmark_line = string.format("    %s %s", config.options.neotree.icon, relative_path)
+				local icon = bookmark.line_num and " " or config.options.neotree.icon -- Different icons for line vs file bookmarks
+				local display_name = bookmark.line_num and bookmark.name or vim.fn.fnamemodify(relative_path, ":t")
+
+				local bookmark_line
+				if bookmark.line_num then
+					bookmark_line = string.format("    %s %s (%s)", icon, display_name, relative_path)
+				else
+					bookmark_line = string.format("    %s %s", icon, relative_path)
+				end
 
 				table.insert(lines, bookmark_line)
 
@@ -126,14 +134,16 @@ local function render_content()
 					path = bookmark.path,
 					name = bookmark.name,
 					project = project.name,
+					line_num = bookmark.line_num,
 				})
 
 				-- Highlight bookmark icon
+				local icon_hl = bookmark.line_num and "BookyLineBookmarkIcon" or "BookyBookmarkIcon"
 				table.insert(highlights, {
 					line = #lines - 1,
 					col_start = 4,
 					col_end = 6,
-					hl_group = "BookyBookmarkIcon",
+					hl_group = icon_hl,
 				})
 			end
 
@@ -187,6 +197,13 @@ local function open_bookmark()
 
 		-- Open file
 		vim.cmd("edit " .. vim.fn.fnameescape(bookmark.path))
+
+		-- If it's a line bookmark, jump to the specific line
+		if bookmark.line_num then
+			vim.api.nvim_win_set_cursor(0, { bookmark.line_num, 0 })
+			-- Center the line in the window
+			vim.cmd("normal! zz")
+		end
 	end
 end
 
@@ -246,6 +263,7 @@ local function setup_highlights()
 	vim.api.nvim_set_hl(0, "BookyCurrentProject", { fg = "#9ece6a", bold = true, default = true })
 	vim.api.nvim_set_hl(0, "BookyProjectPath", { fg = "#565f89", italic = true, default = true })
 	vim.api.nvim_set_hl(0, "BookyHelp", { fg = "#565f89", default = true })
+	vim.api.nvim_set_hl(0, "BookyLineBookmarkIcon", { fg = "#e0af68", default = true }) -- Yellow for line bookmarks
 end
 
 -- Show help in separate floating window
@@ -299,14 +317,16 @@ function M.show_help()
 		"   q, Esc     Close window",
 		"",
 		" Keymaps (Global):",
-		"   " .. config.options.keymaps.add_bookmark .. "        Add/toggle bookmark",
+		"   " .. config.options.keymaps.add_bookmark .. "        Add/toggle file bookmark",
+		"   " .. config.options.keymaps.add_line_bookmark .. "        Add line bookmark",
 		"   " .. config.options.keymaps.toggle_telescope .. "        Project bookmarks",
 		"   " .. config.options.keymaps.global_bookmarks .. "        Global bookmarks",
 		"",
 		" Legend:",
 		"   ▶ Current project",
 		"   ▷ Other projects",
-		"   " .. config.options.neotree.icon .. " Bookmark",
+		"   " .. config.options.neotree.icon .. " File bookmark",
+		"    Line bookmark",
 		"",
 		" Press any key to close help...",
 	}
@@ -330,14 +350,15 @@ function M.show_help()
 	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyCurrentProject", 23, 0, -1) -- Legend
 
 	-- Keymaps highlight
-	for i = 19, 21 do
+	for i = 19, 22 do
 		vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyBookmarkIcon", i, 3, 8)
 	end
 
 	-- Icons highlight
-	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyCurrentProject", 24, 3, 4) -- ▶
-	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyProjectHeader", 25, 3, 4) -- ▷
-	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyBookmarkIcon", 26, 3, 5) --
+	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyCurrentProject", 25, 3, 4) -- ▶
+	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyProjectHeader", 26, 3, 4) -- ▷
+	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyBookmarkIcon", 27, 3, 5) -- file bookmark
+	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyLineBookmarkIcon", 28, 3, 5) -- line bookmark
 
 	-- Footer
 	vim.api.nvim_buf_add_highlight(help_buf, help_ns, "BookyHelp", #help_lines - 1, 0, -1)

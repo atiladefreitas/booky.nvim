@@ -7,6 +7,7 @@ M.options = {
 	-- Keymaps
 	keymaps = {
 		add_bookmark = "<leader>ba", -- Add current file to bookmarks
+		add_line_bookmark = "<leader>bl", -- Add current line to bookmarks
 		toggle_telescope = "<leader>bb", -- Open telescope bookmark picker (project)
 		global_bookmarks = "<leader>bg", -- Open global bookmarks in floating window
 	},

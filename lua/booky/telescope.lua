@@ -43,20 +43,24 @@ function M.open_bookmark_picker(show_all)
 	local entries = {}
 	for _, bookmark in ipairs(bookmarks) do
 		local display
+		local icon = bookmark.line_num and " " or " " -- Different icons for line vs file bookmarks
+
 		if show_all then
 			-- Show project name for global view
 			local relative_path = utils.get_relative_path(bookmark.path, bookmark.project_root)
-			display = string.format("[%s] %s (%s)", bookmark.project_name or "Unknown", bookmark.name, relative_path)
+			display =
+				string.format("%s[%s] %s (%s)", icon, bookmark.project_name or "Unknown", bookmark.name, relative_path)
 		else
 			-- Show relative path for project view
 			local relative_path = utils.get_relative_path(bookmark.path, current_project_root)
-			display = bookmark.name .. " (" .. relative_path .. ")"
+			display = icon .. bookmark.name .. " (" .. relative_path .. ")"
 		end
 
 		table.insert(entries, {
 			path = bookmark.path,
 			name = bookmark.name,
 			display = display,
+			line_num = bookmark.line_num,
 		})
 	end
 
@@ -104,6 +108,13 @@ function M.open_bookmark_picker(show_all)
 					if selection then
 						-- Open the selected file
 						vim.cmd("edit " .. vim.fn.fnameescape(selection.path))
+
+						-- If it's a line bookmark, jump to the specific line
+						if selection.value.line_num then
+							vim.api.nvim_win_set_cursor(0, { selection.value.line_num, 0 })
+							-- Center the line in the window
+							vim.cmd("normal! zz")
+						end
 					end
 				end)
 

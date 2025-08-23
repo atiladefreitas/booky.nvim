@@ -116,7 +116,7 @@ local function render_content()
 			-- Bookmarks for this project
 			for _, bookmark in ipairs(project.bookmarks) do
 				local relative_path = utils.get_relative_path(bookmark.path, project.root)
-				local icon = bookmark.line_num and " " or config.options.neotree.icon -- Different icons for line vs file bookmarks
+				local icon = bookmark.line_num and "󰘦" or config.options.neotree.icon -- Different icons for line vs file bookmarks
 				local display_name = bookmark.line_num and bookmark.name or vim.fn.fnamemodify(relative_path, ":t")
 
 				local bookmark_line
@@ -326,7 +326,7 @@ function M.show_help()
 		"   ▶ Current project",
 		"   ▷ Other projects",
 		"   " .. config.options.neotree.icon .. " File bookmark",
-		"    Line bookmark",
+		"   󰘦 Line bookmark",
 		"",
 		" Press any key to close help...",
 	}

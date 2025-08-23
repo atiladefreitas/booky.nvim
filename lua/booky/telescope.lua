@@ -75,7 +75,7 @@ function M.open_bookmark_picker(show_all)
 	local entries = {}
 	for _, bookmark in ipairs(bookmarks) do
 		local file_icon, icon_hl_group = get_file_icon(bookmark.path, vim.fn.fnamemodify(bookmark.path, ":e"))
-		local bookmark_icon = bookmark.line_num and "󰘦" or "" -- Different icons for line vs file bookmarks
+		local bookmark_icon = bookmark.line_num and config.options.neotree.line_icon or config.options.neotree.icon -- Different icons for line vs file bookmarks
 
 		local text
 		if show_all then

@@ -16,6 +16,7 @@ M.options = {
 	neotree = {
 		enabled = true,
 		icon = "", -- Orange bookmark nerd font icon
+		line_icon = "󰘦", -- Line bookmark icon
 		highlight = "BookyBookmarkIcon",
 	},
 

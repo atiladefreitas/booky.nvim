@@ -16,10 +16,15 @@ function M.setup()
 		return
 	end
 
-	-- Try to register using NeoTree's renderer system
+	-- Register immediately and also setup manual decorations as fallback
+	M.register_decorator()
+	M.setup_manual_decorations()
+
+	-- Also try after a short delay for safety
 	vim.defer_fn(function()
 		M.register_decorator()
-	end, 1000) -- Give NeoTree time to load
+		M.decorate_neotree_buffers()
+	end, 100) -- Shorter delay
 end
 
 -- Register the decorator using NeoTree's proper API
@@ -60,6 +65,10 @@ function M.setup_manual_decorations()
 	vim.api.nvim_create_autocmd({
 		"BufEnter",
 		"BufWritePost",
+		"BufWinEnter",
+		"WinEnter",
+		"FocusGained",
+		"VimResized",
 		"CursorMoved",
 		"CursorMovedI",
 		"TextChanged",
@@ -74,13 +83,29 @@ function M.setup_manual_decorations()
 		end,
 	})
 
-	-- Also hook into NeoTree specific events if available
+	-- More specific NeoTree events
 	vim.api.nvim_create_autocmd("User", {
-		pattern = "neo-tree*",
+		pattern = { "neo-tree*", "NeotreePopulated", "NeotreeBufferEnter" },
 		callback = function()
 			vim.defer_fn(function()
 				M.decorate_neotree_buffers()
 			end, 10)
+		end,
+	})
+
+	-- Handle focus events more precisely
+	vim.api.nvim_create_autocmd({ "WinEnter", "FocusGained" }, {
+		pattern = "*",
+		callback = function()
+			-- Only refresh if we're entering a NeoTree window or gaining focus
+			vim.defer_fn(function()
+				local current_win = vim.api.nvim_get_current_win()
+				local bufnr = vim.api.nvim_win_get_buf(current_win)
+				local buf_name = vim.api.nvim_buf_get_name(bufnr)
+				if buf_name:match("neo%-tree") then
+					M.add_decorations_to_buffer(bufnr)
+				end
+			end, 50)
 		end,
 	})
 
@@ -105,7 +130,7 @@ function M.debounced_decorate(bufnr)
 	end
 
 	-- Set new timer with debounce
-	debounce_timers[bufnr] = vim.fn.timer_start(20, function()
+	debounce_timers[bufnr] = vim.fn.timer_start(50, function()
 		M.add_decorations_to_buffer(bufnr)
 		debounce_timers[bufnr] = nil
 	end)
@@ -139,11 +164,18 @@ function M.add_decorations_to_buffer(bufnr)
 	-- Check if we need to update decorations (performance optimization)
 	local current_tick = vim.api.nvim_buf_get_changedtick(bufnr)
 	if decoration_cache[bufnr] and decoration_cache[bufnr].tick == current_tick then
-		return -- No changes, skip decoration update
+		-- Still check if decorations actually exist
+		local existing_marks = vim.api.nvim_buf_get_extmarks(bufnr, ns_id, 0, -1, {})
+		if #existing_marks > 0 then
+			return -- No changes and decorations exist, skip update
+		end
 	end
 
-	-- Clear existing decorations only when needed
-	vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+	-- Only clear existing decorations when actually needed
+	local existing_marks = vim.api.nvim_buf_get_extmarks(bufnr, ns_id, 0, -1, {})
+	if #existing_marks > 0 then
+		vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+	end
 
 	-- Initialize cache for this buffer
 	decoration_cache[bufnr] = { tick = current_tick, decorations = {} }
@@ -176,6 +208,7 @@ function M.add_decorations_to_buffer(bufnr)
 						virt_text = { { config.options.neotree.icon, config.options.neotree.highlight } },
 						virt_text_pos = "right_align",
 						invalidate = false, -- Keep extmarks when buffer changes
+						strict = false, -- Allow positioning even if line changes
 					})
 					-- Cache the decoration
 					decoration_cache[bufnr].decorations[i] = extmark_id
@@ -197,6 +230,7 @@ function M.add_decorations_to_buffer(bufnr)
 							virt_text = { { config.options.neotree.icon, config.options.neotree.highlight } },
 							virt_text_pos = "right_align",
 							invalidate = false, -- Keep extmarks when buffer changes
+							strict = false, -- Allow positioning even if line changes
 						})
 						-- Cache the decoration
 						decoration_cache[bufnr].decorations[i] = extmark_id

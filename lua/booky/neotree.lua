@@ -131,6 +131,7 @@ function M.add_decorations_to_buffer(bufnr)
 
 	local config = require("booky.config")
 	local state = require("booky.state")
+	local utils = require("booky.utils")
 
 	-- Create namespace for our decorations
 	local ns_id = vim.api.nvim_create_namespace("booky_bookmarks")
@@ -147,8 +148,9 @@ function M.add_decorations_to_buffer(bufnr)
 	-- Initialize cache for this buffer
 	decoration_cache[bufnr] = { tick = current_tick, decorations = {} }
 
-	-- Get current working directory for relative path resolution
+	-- Get current working directory and project root for relative path resolution
 	local cwd = vim.fn.getcwd()
+	local current_project_root = utils.get_project_root(cwd)
 
 	-- Get all lines in the buffer
 	local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
@@ -158,11 +160,11 @@ function M.add_decorations_to_buffer(bufnr)
 		local filename = line:match("([^%s│├└─▸▾@]+%.%w+)%s*$")
 
 		if filename then
-			-- Get all bookmarks to try matching by filename
-			local bookmarks = state.get_bookmarks()
+			-- Get only bookmarks for the current project
+			local project_bookmarks = state.get_project_bookmarks(current_project_root)
 			local found_match = false
 
-			for _, bookmark in ipairs(bookmarks) do
+			for _, bookmark in ipairs(project_bookmarks) do
 				-- Check if the filename matches the end of any bookmark path
 				if
 					bookmark.path:match("/" .. filename:gsub("%-", "%%-") .. "$")
@@ -182,18 +184,23 @@ function M.add_decorations_to_buffer(bufnr)
 				end
 			end
 
-			-- Fallback: try relative path from current working directory
+			-- Fallback: try relative path from current working directory (but still check if it's in current project)
 			if not found_match then
 				local relative_path = cwd .. "/" .. filename
-				if vim.fn.filereadable(relative_path) == 1 and state.is_bookmarked(relative_path) then
-					-- Add virtual text decoration at far right with persistent options
-					local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ns_id, i - 1, #line, {
-						virt_text = { { config.options.neotree.icon, config.options.neotree.highlight } },
-						virt_text_pos = "right_align",
-						invalidate = false, -- Keep extmarks when buffer changes
-					})
-					-- Cache the decoration
-					decoration_cache[bufnr].decorations[i] = extmark_id
+				if vim.fn.filereadable(relative_path) == 1 then
+					local full_path = vim.fn.resolve(vim.fn.expand(relative_path))
+					-- Only show bookmark if the file is actually bookmarked AND within the current project
+					local file_project_root = utils.get_project_root(full_path)
+					if file_project_root == current_project_root and state.is_bookmarked(full_path) then
+						-- Add virtual text decoration at far right with persistent options
+						local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ns_id, i - 1, #line, {
+							virt_text = { { config.options.neotree.icon, config.options.neotree.highlight } },
+							virt_text_pos = "right_align",
+							invalidate = false, -- Keep extmarks when buffer changes
+						})
+						-- Cache the decoration
+						decoration_cache[bufnr].decorations[i] = extmark_id
+					end
 				end
 			end
 		end
@@ -267,11 +274,16 @@ function M.debug_decorations()
 						if filename then
 							print(string.format("    -> Found filename: %s", filename))
 
-							-- Get all bookmarks to try matching
-							local bookmarks = state.get_bookmarks()
+							-- Get current project root for debugging
+							local utils = require("booky.utils")
+							local current_project_root = utils.get_project_root(cwd)
+							print(string.format("    -> Current project root: %s", current_project_root))
+							
+							-- Get only bookmarks for current project
+							local project_bookmarks = state.get_project_bookmarks(current_project_root)
 							local found_match = false
 
-							for _, bookmark in ipairs(bookmarks) do
+							for _, bookmark in ipairs(project_bookmarks) do
 								-- Check if the filename matches the end of any bookmark path
 								if
 									bookmark.path:match("/" .. filename:gsub("%-", "%%-") .. "$")
@@ -287,18 +299,25 @@ function M.debug_decorations()
 							end
 
 							if not found_match then
-								-- Fallback: Try relative path from current working directory
+								-- Fallback: Try relative path from current working directory (but check project)
 								local relative_path = cwd .. "/" .. filename
 								print(string.format("    -> Trying path: %s", relative_path))
 								print(
 									string.format("    -> File readable: %s", vim.fn.filereadable(relative_path) == 1)
 								)
-								print(string.format("    -> Is bookmarked: %s", state.is_bookmarked(relative_path)))
+								
+								if vim.fn.filereadable(relative_path) == 1 then
+									local full_path = vim.fn.resolve(vim.fn.expand(relative_path))
+									local file_project_root = utils.get_project_root(full_path)
+									print(string.format("    -> File project root: %s", file_project_root))
+									print(string.format("    -> Current project root: %s", current_project_root))
+									print(string.format("    -> Is bookmarked: %s", state.is_bookmarked(full_path)))
 
-								if state.is_bookmarked(relative_path) then
-									print("    -> SHOULD ADD DECORATION!")
-									M.test_decoration(bufnr, i - 1, line)
-									found_match = true
+									if file_project_root == current_project_root and state.is_bookmarked(full_path) then
+										print("    -> SHOULD ADD DECORATION!")
+										M.test_decoration(bufnr, i - 1, line)
+										found_match = true
+									end
 								end
 							end
 						end

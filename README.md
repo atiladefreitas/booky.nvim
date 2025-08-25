@@ -1,4 +1,4 @@
-# Booky
+# Booky [WIP]
 
 Booky is a powerful project-aware bookmark manager for Neovim. It intelligently organizes your bookmarks by project, allowing you to focus on current project files or browse all bookmarks across projects with a beautiful interface.
 
